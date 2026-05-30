@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineVault — Unlock Premium Content</title>
+  <meta name="description" content="Unlock exclusive viral video content through premium access." />
+
+  <!-- Telegram WebApp SDK (loads only in TMA context, harmless in browser) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES — GLOBAL DESIGN TOKENS
+    ============================================================ */
+    :root {
+      --bg-void:       #050508;
+      --bg-surface:    #0d0d14;
+      --bg-card:       #111120;
+      --bg-glass:      rgba(255,255,255,0.04);
+      --bg-glass-hover:rgba(255,255,255,0.07);
+
+      --gold:          #d4a843;
+      --gold-glow:     rgba(212,168,67,0.25);
+      --gold-dim:      #8a6d2a;
+      --neon-teal:     #00e5c8;
+      --neon-teal-dim: rgba(0,229,200,0.15);
+      --neon-rose:     #ff4d7e;
+      --neon-rose-dim: rgba(255,77,126,0.15);
+
+      --text-primary:  #f0ede6;
+      --text-secondary:#9b96a8;
+      --text-muted:    #5a5568;
+
+      --border-subtle: rgba(255,255,255,0.07);
+      --border-glass:  rgba(255,255,255,0.12);
+
+      --radius-card:   16px;
+      --radius-btn:    12px;
+      --radius-pill:   100px;
+
+      --shadow-card:   0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px var(--border-subtle);
+      --shadow-glow-gold: 0 0 30px var(--gold-glow);
+
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-body:    'DM Sans', system-ui, sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+
+      --unlock-duration: 300; /* seconds (5 minutes). Change this value to adjust */
+      --timer-progress: 0%;
+
+      --transition-base: 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* Grain overlay for cinematic depth */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* Import fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    /* ============================================================
+       SCROLLBAR
+    ============================================================ */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(5,5,8,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--gold) 0%, #b8892a 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 16px var(--gold-glow);
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text-primary);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    .header-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--neon-teal);
+      background: var(--neon-teal-dim);
+      border: 1px solid rgba(0,229,200,0.25);
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+    }
+
+    .header-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--neon-teal);
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ============================================================
+       HERO SECTION
+    ============================================================ */
+    .hero {
+      padding: 40px 20px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 300px;
+      background: radial-gradient(ellipse at center, rgba(212,168,67,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .hero-eyebrow::before,
+    .hero-eyebrow::after {
+      content: '';
+      height: 1px;
+      width: 24px;
+      background: linear-gradient(90deg, transparent, var(--gold));
+    }
+    .hero-eyebrow::after { transform: scaleX(-1); }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 8vw, 52px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      margin-bottom: 14px;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 360px;
+      margin: 0 auto 28px;
+      line-height: 1.7;
+    }
+
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .hero-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .hero-stat-num {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .hero-stat-label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .hero-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border-subtle);
+    }
+
+    /* ============================================================
+       POSTS GRID
+    ============================================================ */
+    .posts-section {
+      padding: 8px 16px 40px;
+    }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      padding: 0 4px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
+    .posts-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 520px) {
+      .posts-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (min-width: 900px) {
+      .posts-grid { grid-template-columns: 1fr 1fr 1fr; }
+      .posts-section { padding: 8px 32px 60px; }
+    }
+
+    /* ============================================================
+       POST CARD
+    ============================================================ */
+    .post-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-card);
+      transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+      will-change: transform;
+    }
+
+    .post-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-glass);
+      box-shadow: var(--shadow-card), 0 16px 60px rgba(0,0,0,0.5);
+    }
+
+    /* Thumbnail */
+    .card-thumb {
+      position: relative;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: #0a0a12;
+    }
+
+    .card-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease, filter 0.4s ease;
+      filter: brightness(0.9) saturate(1.1);
+    }
+
+    /* Lazy-load placeholder */
+    .card-thumb img[data-src]:not([src]) {
+      visibility: hidden;
+    }
+
+    .post-card:hover .card-thumb img {
+      transform: scale(1.04);
+      filter: brightness(1) saturate(1.2);
+    }
+
+    .thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(5,5,8,0.85) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .thumb-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      backdrop-filter: blur(8px);
+    }
+
+    .thumb-badge.tma { background: rgba(0,229,200,0.2); color: var(--neon-teal); border: 1px solid rgba(0,229,200,0.3); }
+    .thumb-badge.web { background: rgba(212,168,67,0.2); color: var(--gold); border: 1px solid rgba(212,168,67,0.3); }
+
+    .thumb-play {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      width: 36px;
+      height: 36px;
+      background: rgba(212,168,67,0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Card Body */
+    .card-body {
+      padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+
+    /* Progress bar (TMA only) */
+    .task-progress {
+      display: none; /* shown in TMA mode */
+    }
+
+    .tma-mode .task-progress { display: block; }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .progress-count {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--neon-teal);
+    }
+
+    .progress-bar-track {
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--neon-teal), var(--gold));
+      border-radius: 2px;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+      width: 0%;
+    }
+
+    /* Unlock timer (TMA only, shown when unlocked) */
+    .unlock-timer {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--gold);
+      background: var(--gold-glow);
+      border: 1px solid rgba(212,168,67,0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+
+    .unlock-timer.active { display: flex; }
+
+    .unlock-timer-icon { font-size: 14px; }
+
+    .unlock-countdown {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    /* ============================================================
+       BUTTONS
+    ============================================================ */
+    .btn {
+      width: 100%;
+      padding: 13px 20px;
+      border: none;
+      border-radius: var(--radius-btn);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all var(--transition-base);
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.15s ease;
+    }
+
+    .btn:active::after { background: rgba(255,255,255,0.08); }
+
+    /* Default / Watch Task state */
+    .btn-task {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: var(--text-primary);
+      border: 1px solid var(--border-glass);
+      text-transform: uppercase;
+    }
+
+    .btn-task:hover:not(:disabled) {
+      background: linear-gradient(135deg, #1e1e38 0%, #1a2648 100%);
+      border-color: var(--neon-teal);
+      box-shadow: 0 0 0 1px var(--neon-teal), 0 8px 24px var(--neon-teal-dim);
+    }
+
+    /* Loading state */
+    .btn-loading {
+      background: linear-gradient(135deg, #111128 0%, #0e1a30 100%);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Timer countdown state (web) */
+    .btn-timer {
+      background: linear-gradient(135deg, #1a140a 0%, #2a1f08 100%);
+      color: var(--gold);
+      border: 1px solid rgba(212,168,67,0.3);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Claim / Unlock state */
+    .btn-claim {
+      background: linear-gradient(135deg, var(--gold) 0%, #c49528 100%);
+      color: #0a0800;
+      border: none;
+      box-shadow: 0 4px 20px var(--gold-glow);
+    }
+
+    .btn-claim:hover:not(:disabled) {
+      box-shadow: 0 6px 28px rgba(212,168,67,0.5);
+      transform: translateY(-1px);
+    }
+
+    /* Unlocked / Go state */
+    .btn-unlocked {
+      background: linear-gradient(135deg, var(--neon-teal) 0%, #00b89e 100%);
+      color: #003d38;
+      border: none;
+      box-shadow: 0 4px 20px var(--neon-teal-dim);
+    }
+
+    .btn-unlocked:hover:not(:disabled) {
+      box-shadow: 0 6px 28px rgba(0,229,200,0.4);
+      transform: translateY(-1px);
+    }
+
+    /* Disabled */
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ============================================================
+       NOTIFICATION TOAST
+    ============================================================ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      pointer-events: none;
+      width: calc(100% - 32px);
+      max-width: 420px;
+    }
+
+    .toast {
+      width: 100%;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.4;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      backdrop-filter: blur(16px);
+      animation: toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      pointer-events: auto;
+    }
+
+    .toast.error {
+      background: rgba(255,77,126,0.18);
+      border: 1px solid rgba(255,77,126,0.4);
+      color: #ff9ab5;
+    }
+
+    .toast.success {
+      background: rgba(0,229,200,0.12);
+      border: 1px solid rgba(0,229,200,0.3);
+      color: var(--neon-teal);
+    }
+
+    .toast.info {
+      background: rgba(212,168,67,0.12);
+      border: 1px solid rgba(212,168,67,0.3);
+      color: var(--gold);
+    }
+
+    .toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to   { opacity: 0; transform: translateY(10px) scale(0.95); }
+    }
+
+    /* ============================================================
+       LOADING SKELETON
+    ============================================================ */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 520px) { .skeleton-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 900px) { .skeleton-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+    }
+
+    .skeleton-thumb {
+      aspect-ratio: 16/9;
+      background: linear-gradient(90deg, #111120 25%, #1a1a2e 50%, #111120 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    .skeleton-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .skeleton-line {
+      height: 14px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #111120 25%, #1a1a2e 50%, #111120 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+
+    .skeleton-line.short { width: 60%; }
+    .skeleton-line.btn-skel { height: 44px; border-radius: 10px; margin-top: 4px; }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ============================================================
+       ERROR STATE
+    ============================================================ */
+    .error-state {
+      text-align: center;
+      padding: 60px 24px;
+      display: none;
+    }
+
+    .error-state.visible { display: block; }
+
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+
+    .error-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .error-msg {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .btn-retry {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+      padding: 10px 24px;
+      border-radius: var(--radius-btn);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-body);
+      transition: all var(--transition-base);
+    }
+
+    .btn-retry:hover { background: var(--bg-glass-hover); border-color: var(--gold); }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    .app-footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ============================================================
+       UTILITY
+    ============================================================ */
+    .hidden { display: none !important; }
+
+    /* Fade-in animation for cards */
+    @keyframes card-reveal {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .post-card { animation: card-reveal 0.4s ease both; }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       APP SHELL
+  ============================================================ -->
+  <header class="app-header">
+    <a href="#" class="logo" aria-label="CineVault Home">
+      <div class="logo-icon">🎬</div>
+      <span class="logo-text">Cine<span>Vault</span></span>
+    </a>
+    <div class="header-badge" id="env-badge">LIVE</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-eyebrow">Premium Content Platform</div>
+      <h1 class="hero-title">Unlock <em>Exclusive</em><br>Video Content</h1>
+      <p class="hero-subtitle">Complete short tasks to gain time-limited access to our curated collection of premium viral videos.</p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-num">500+</span>
+          <span class="hero-stat-label">Videos</span>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat">
+          <span class="hero-stat-num">5 Min</span>
+          <span class="hero-stat-label">Access Window</span>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat">
+          <span class="hero-stat-num">100%</span>
+          <span class="hero-stat-label">Free</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="posts-section">
+      <div class="section-label">Available Content</div>
+      <!-- Skeleton Loader -->
+      <div id="skeleton-loader" class="skeleton-grid">
+        <div class="skeleton-card">
+          <div class="skeleton-thumb"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line btn-skel"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-thumb"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line btn-skel"></div>
+          </div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton-thumb"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-line btn-skel"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Error State -->
+      <div id="error-state" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h2 class="error-title">Content Unavailable</h2>
+        <p class="error-msg" id="error-msg-text">Failed to load posts. Check your connection and try again.</p>
+        <button class="btn-retry" id="btn-retry">↻ Retry</button>
+      </div>
+      <!-- Posts Container -->
+      <div id="posts-container" class="posts-grid hidden"></div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    &copy; 2025 CineVault &mdash; Premium Cinematic Content
+  </footer>
+
+  <!-- Toast notification container -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- ============================================================
+       JAVASCRIPT — FULLY ANNOTATED, PRODUCTION-READY
+  ============================================================ -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ================================================================
+       ██████╗  ██████╗ ███╗   ██╗███████╗██╗ ██████╗
+       ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔════╝
+       ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ███╗
+       ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║   ██║
+       ╚██████╗╚██████╔╝██║ ╚████║██║     ██║╚██████╔╝
+        ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝ ╚═════╝
+    ================================================================
+       GLOBAL CONFIGURATION — Edit these values to configure the app
+    ================================================================ */
+
+    const CONFIG = {
+      // ── Data Sources ──────────────────────────────────────────────
+      TMA_DATA_URL: 'tma-posts.json',
+      WEB_DATA_URL: 'web-posts.json',
+
+      // ── TMA: Unlock duration in SECONDS (default: 300 = 5 minutes)
+      // Easily change this value to adjust how long access lasts.
+      UNLOCK_DURATION_SECONDS: 300,
+
+      // ── WEB: How long (in ms) the user must stay on the ad tab ──
+      // 15000 = 15 seconds. Change to adjust.
+      AD_VISIBILITY_THRESHOLD_MS: 15000,
+
+      // ── WEB: Round-Robin Ad Links ─────────────────────────────────
+      // ADD YOUR ACTUAL AD REDIRECT LINKS HERE.
+      // These cycle globally across all post button clicks.
+      AD_LINKS: [
+        'https://adlink1.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 1 */
+        'https://adlink2.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 2 */
+        'https://adlink3.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 3 */
+      ],
+    };
+
+    /* ================================================================
+       ENVIRONMENT DETECTION
+       Determines whether we're inside Telegram or a standard browser.
+    ================================================================ */
+    const isTMA = (
+      typeof window.Telegram !== 'undefined' &&
+      typeof window.Telegram.WebApp !== 'undefined' &&
+      !!window.Telegram.WebApp.initData  // non-empty initData means real TMA launch
+    );
+
+    // Update header badge and body class based on environment
+    const envBadge = document.getElementById('env-badge');
+    if (isTMA) {
+      envBadge.textContent = 'TELEGRAM';
+      envBadge.style.color = '#5dafff';
+      envBadge.style.background = 'rgba(93,175,255,0.12)';
+      envBadge.style.borderColor = 'rgba(93,175,255,0.3)';
+      document.body.classList.add('tma-mode');
+      // Expand the Telegram Mini App to full height
+      window.Telegram.WebApp.expand();
+    } else {
+      envBadge.textContent = 'WEB';
+      document.body.classList.add('web-mode');
+    }
+
+    /* ================================================================
+       UTILITY: TOAST NOTIFICATIONS
+    ================================================================ */
+    const toastContainer = document.getElementById('toast-container');
+
+    /**
+     * Shows a toast message.
+     * @param {string} message  - HTML or plain text message
+     * @param {'error'|'success'|'info'} type
+     * @param {number} duration - ms before auto-dismiss (0 = no auto-dismiss)
+     */
+    function showToast(message, type = 'info', duration = 4500) {
+      const icons = { error: '🚫', success: '✅', info: '⏳' };
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+      toastContainer.appendChild(toast);
+
+      if (duration > 0) {
+        setTimeout(() => {
+          toast.style.animation = 'toast-out 0.3s ease forwards';
+          setTimeout(() => toast.remove(), 300);
+        }, duration);
+      }
+      return toast; // caller can remove manually
+    }
+
+    /* ================================================================
+       UTILITY: LAZY IMAGE LOADING via IntersectionObserver
+       Images only request network when within 100px of the viewport.
+    ================================================================ */
+    const lazyObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          const src = img.dataset.src;
+          if (src) {
+            img.src = src;
+            img.removeAttribute('data-src');
+            img.style.visibility = 'visible';
+            lazyObserver.unobserve(img);
+          }
+        }
+      });
+    }, {
+      rootMargin: '100px 0px', // triggers 100px before entering viewport
+      threshold: 0
+    });
+
+    /**
+     * Registers an img element for lazy loading.
+     * @param {HTMLImageElement} img
+     */
+    function registerLazyImage(img) {
+      // Keep src blank to prevent immediate network request
+      const src = img.getAttribute('src');
+      if (src) {
+        img.dataset.src = src;
+        img.removeAttribute('src');
+        img.style.visibility = 'hidden';
+      }
+      lazyObserver.observe(img);
+    }
+
+    /* ================================================================
+       SKELETON / ERROR STATE MANAGEMENT
+    ================================================================ */
+    const skeletonEl   = document.getElementById('skeleton-loader');
+    const errorEl      = document.getElementById('error-state');
+    const errorMsgEl   = document.getElementById('error-msg-text');
+    const postsGridEl  = document.getElementById('posts-container');
+    const retryBtn     = document.getElementById('btn-retry');
+
+    function showSkeleton() {
+      skeletonEl.style.display = '';
+      errorEl.classList.remove('visible');
+      postsGridEl.classList.add('hidden');
+    }
+
+    function showError(msg = 'Failed to load posts. Check your connection and try again.') {
+      skeletonEl.style.display = 'none';
+      errorMsgEl.textContent = msg;
+      errorEl.classList.add('visible');
+      postsGridEl.classList.add('hidden');
+    }
+
+    function showPosts() {
+      skeletonEl.style.display = 'none';
+      errorEl.classList.remove('visible');
+      postsGridEl.classList.remove('hidden');
+    }
+
+    retryBtn.addEventListener('click', () => {
+      showSkeleton();
+      isTMA ? mountTMAModule() : mountWebModule();
+    });
+
+    /* ================================================================
+       ████████╗███╗   ███╗ █████╗     ███╗   ███╗ ██████╗ ██████╗ ██╗   ██╗██╗     ███████╗
+          ██║   ████╗ ████║██╔══██╗    ████╗ ████║██╔═══██╗██╔══██╗██║   ██║██║     ██╔════╝
+          ██║   ██╔████╔██║███████║    ██╔████╔██║██║   ██║██║  ██║██║   ██║██║     █████╗
+          ██║   ██║╚██╔╝██║██╔══██║    ██║╚██╔╝██║██║   ██║██║  ██║██║   ██║██║     ██╔══╝
+          ██║   ██║ ╚═╝ ██║██║  ██║    ██║ ╚═╝ ██║╚██████╔╝██████╔╝╚██████╔╝███████╗███████╗
+          ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝    ╚═╝     ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+       MODULE A: TELEGRAM MINI APP LOGIC
+    ================================================================ */
+
+    /**
+     * TMA LocalStorage key pattern: `tma_progress_<postId>`
+     * Stored value: { count: number, unlockedAt: number|null }
+     */
+
+    /**
+     * Retrieves stored TMA progress for a given post.
+     * @param {string} postId
+     * @returns {{ count: number, unlockedAt: number|null }}
+     */
+    function getTMAProgress(postId) {
+      try {
+        const raw = localStorage.getItem(`tma_progress_${postId}`);
+        if (!raw) return { count: 0, unlockedAt: null };
+        return JSON.parse(raw);
+      } catch {
+        return { count: 0, unlockedAt: null };
+      }
+    }
+
+    /**
+     * Saves TMA progress for a given post.
+     * @param {string} postId
+     * @param {{ count: number, unlockedAt: number|null }} data
+     */
+    function saveTMAProgress(postId, data) {
+      try {
+        localStorage.setItem(`tma_progress_${postId}`, JSON.stringify(data));
+      } catch (e) {
+        console.warn('[TMA] localStorage write failed:', e);
+      }
+    }
+
+    /**
+     * Resets TMA progress for a post back to 0.
+     * @param {string} postId
+     */
+    function resetTMAProgress(postId) {
+      saveTMAProgress(postId, { count: 0, unlockedAt: null });
+    }
+
+    /**
+     * ── AD CHAIN ENGINE ──────────────────────────────────────────────
+     *
+     * Executes the sequential Monetag → GigaBaps ad chain.
+     * Returns a Promise that resolves TRUE if both ads completed,
+     * or resolves FALSE if either ad was skipped/errored.
+     *
+     * IMPORTANT: Replace the placeholder ad zone IDs below with your
+     * actual IDs from Monetag and GigaBaps dashboards.
+     *
+     * @returns {Promise<boolean>}
+     */
+    function runAdChain() {
+      return new Promise((resolve) => {
+
+        /* ── STEP 1: Trigger MONETAG Ad ──────────────────────────────
+           INSERT YOUR MONETAG ZONE ID BELOW.
+           Replace `YOUR_MONETAG_ZONE_ID` with the actual zone ID.
+           Monetag SDK must be loaded (add their script to <head>).
+           ──────────────────────────────────────────────────────────── */
+        const MONETAG_ZONE_ID = 'YOUR_MONETAG_ZONE_ID'; /* ← REPLACE THIS */
+
+        let monetagCompleted = false;
+
+        // Monetag interstitial / rewarded ad call.
+        // Adjust the method name based on Monetag's actual SDK API.
+        try {
+          if (typeof window.__monetag === 'undefined' || typeof window.__monetag.show === 'undefined') {
+            console.warn('[TMA Ad] Monetag SDK not loaded. Simulating completion.');
+            // SIMULATION ONLY — Remove this block in production.
+            setTimeout(() => onMonetlagClose(), 1500);
+          } else {
+            /* ── PRODUCTION CODE ──────────────────────────────────
+               Call Monetag's show method with zone ID and callbacks.
+               Replace with exact Monetag API call from their docs.
+               ─────────────────────────────────────────────────── */
+            window.__monetag.show(MONETAG_ZONE_ID, {
+              onClose: onMonetlagClose,
+              onError: () => resolve(false), // ad error → fail the chain
+            });
+          }
+        } catch (err) {
+          console.error('[TMA Ad] Monetag error:', err);
+          resolve(false);
+          return;
+        }
+
+        /* Called the INSTANT Monetag ad closes */
+        function onMonetlagClose() {
+          if (monetagCompleted) return; // guard against double-fire
+          monetagCompleted = true;
+
+          /* ── STEP 2: IMMEDIATELY trigger GIGA BAPS Ad ───────────
+             INSERT YOUR GIGA BAPS ZONE/PUBLISHER ID BELOW.
+             Replace `YOUR_GIGA_BAPS_ID` with the actual ID.
+             GigaBaps SDK must be loaded (add their script to <head>).
+             ──────────────────────────────────────────────────────── */
+          const GIGA_BAPS_ID = 'YOUR_GIGA_BAPS_ID'; /* ← REPLACE THIS */
+
+          try {
+            if (typeof window.gigabaps === 'undefined' || typeof window.gigabaps.show === 'undefined') {
+              console.warn('[TMA Ad] GigaBaps SDK not loaded. Simulating completion.');
+              // SIMULATION ONLY — Remove this block in production.
+              setTimeout(() => onGigaBapsClose(), 1500);
+            } else {
+              /* ── PRODUCTION CODE ────────────────────────────────
+                 Replace with exact GigaBaps API call from their docs.
+                 ─────────────────────────────────────────────────── */
+              window.gigabaps.show(GIGA_BAPS_ID, {
+                onClose: onGigaBapsClose,
+                onError: () => resolve(false),
+              });
+            }
+          } catch (err) {
+            console.error('[TMA Ad] GigaBaps error:', err);
+            resolve(false);
+          }
+        }
+
+        /* Called the INSTANT GigaBaps ad closes — BOTH ads done */
+        function onGigaBapsClose() {
+          /* ── STEP 3: Both ads completed. Resolve true. ────────────
+             The task counter will now increment in the caller.
+             ──────────────────────────────────────────────────────── */
+          resolve(true);
+        }
+      });
+    }
+
+    /**
+     * Builds and renders a single TMA post card.
+     * @param {Object} post - { id, title, image, totalTasks, targetLink }
+     * @param {number} animDelay - CSS animation delay index
+     * @returns {HTMLElement}
+     */
+    function buildTMACard(post, animDelay) {
+      const progress = getTMAProgress(post.id);
+      const total    = post.totalTasks || 5;
+
+      // Check if currently unlocked (and within time window)
+      const now = Date.now();
+      let isUnlocked = false;
+      let unlockSecondsLeft = 0;
+
+      if (progress.unlockedAt) {
+        const elapsed = (now - progress.unlockedAt) / 1000;
+        if (elapsed < CONFIG.UNLOCK_DURATION_SECONDS) {
+          isUnlocked = true;
+          unlockSecondsLeft = Math.ceil(CONFIG.UNLOCK_DURATION_SECONDS - elapsed);
+        } else {
+          // Expired — reset
+          resetTMAProgress(post.id);
+          progress.count = 0;
+          progress.unlockedAt = null;
+        }
+      }
+
+      const count  = isUnlocked ? total : Math.min(progress.count, total);
+      const pct    = Math.round((count / total) * 100);
+
+      // Build card HTML
+      const card = document.createElement('div');
+      card.className = 'post-card';
+      card.style.animationDelay = `${animDelay * 80}ms`;
+      card.dataset.postId = post.id;
+
+      card.innerHTML = `
+        <div class="card-thumb">
+          <img src="${post.image}" alt="${escapeHTML(post.title)}" loading="lazy" />
+          <div class="thumb-overlay"></div>
+          <span class="thumb-badge tma">Task</span>
+          <div class="thumb-play">▶</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">${escapeHTML(post.title)}</h2>
+
+          <div class="task-progress">
+            <div class="progress-header">
+              <span>Tasks Completed</span>
+              <span class="progress-count">${count}/${total}</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+
+          <div class="unlock-timer ${isUnlocked ? 'active' : ''}" data-unlock-timer>
+            <span class="unlock-timer-icon">⏱</span>
+            <span>Access expires in <strong class="unlock-countdown" data-countdown>${unlockSecondsLeft}s</strong></span>
+          </div>
+
+          ${isUnlocked
+            ? `<a href="${escapeHTML(post.targetLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-unlocked" aria-label="Open target video">🔓 Watch Now</a>`
+            : count >= total
+              ? `<button class="btn btn-claim" data-action="open-link" data-link="${escapeHTML(post.targetLink)}">🎬 Access Video</button>`
+              : `<button class="btn btn-task" data-action="tma-task" data-post-id="${post.id}" data-total="${total}">▶ Watch Ad (${count}/${total})</button>`
+          }
+        </div>
+      `;
+
+      // Register lazy image
+      const img = card.querySelector('img');
+      registerLazyImage(img);
+
+      // If currently unlocked, start the countdown timer
+      if (isUnlocked && progress.unlockedAt) {
+        startUnlockCountdown(card, post.id, progress.unlockedAt, total);
+      }
+
+      return card;
+    }
+
+    /**
+     * Starts the live countdown timer for an unlocked post.
+     * When it expires, resets progress and re-renders the card.
+     * @param {HTMLElement} card
+     * @param {string} postId
+     * @param {number} unlockedAt - timestamp ms
+     * @param {number} total
+     */
+    function startUnlockCountdown(card, postId, unlockedAt, total) {
+      const countdownEl = card.querySelector('[data-countdown]');
+      const timerEl     = card.querySelector('[data-unlock-timer]');
+
+      const intervalId = setInterval(() => {
+        const elapsed = (Date.now() - unlockedAt) / 1000;
+        const left    = Math.ceil(CONFIG.UNLOCK_DURATION_SECONDS - elapsed);
+
+        if (left <= 0) {
+          clearInterval(intervalId);
+          // Reset and re-render this card
+          resetTMAProgress(postId);
+          const newCard = buildTMACard({ id: postId, title: card.querySelector('.card-title').textContent, image: '', totalTasks: total, targetLink: '' }, 0);
+          // Actually we need to re-fetch from the data — easier to just reload the card from stored posts
+          rerenderTMACard(postId);
+          return;
+        }
+
+        const mins = Math.floor(left / 60);
+        const secs = left % 60;
+        if (countdownEl) {
+          countdownEl.textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+        }
+      }, 1000);
+
+      // Store interval ID on card so we can clear if needed
+      card._countdownInterval = intervalId;
+    }
+
+    /* Stored TMA posts for re-render without re-fetch */
+    let _tmaPostsCache = [];
+
+    /**
+     * Re-renders a specific TMA card in-place (used after expiry).
+     * @param {string} postId
+     */
+    function rerenderTMACard(postId) {
+      const oldCard = postsGridEl.querySelector(`[data-post-id="${postId}"]`);
+      if (!oldCard) return;
+
+      const post = _tmaPostsCache.find(p => String(p.id) === String(postId));
+      if (!post) return;
+
+      clearInterval(oldCard._countdownInterval);
+      const idx     = Array.from(postsGridEl.children).indexOf(oldCard);
+      const newCard = buildTMACard(post, 0);
+      postsGridEl.replaceChild(newCard, oldCard);
+      attachTMACardListeners(newCard, post);
+    }
+
+    /**
+     * Attaches click event listeners to a TMA card.
+     * Includes strict anti-spam locking — one click = one full chain.
+     * @param {HTMLElement} card
+     * @param {Object} post
+     */
+    function attachTMACardListeners(card, post) {
+      // TMA task button
+      const taskBtn = card.querySelector('[data-action="tma-task"]');
+      if (taskBtn) {
+        taskBtn.addEventListener('click', async function handler() {
+          const postId = post.id;
+          const total  = post.totalTasks || 5;
+
+          /* ── ANTI-SPAM: Disable immediately on first click ──────────
+             The button is disabled THE MOMENT it is clicked.
+             No rapid re-click can count as extra tasks.
+             ──────────────────────────────────────────────────────── */
+          taskBtn.disabled = true;
+          taskBtn.className = 'btn btn-loading';
+          taskBtn.innerHTML = '<div class="spinner"></div> Loading Ad...';
+
+          let adSuccess = false;
+
+          try {
+            /* ── RUN AD CHAIN (sequential: Monetag → GigaBaps) ──── */
+            adSuccess = await runAdChain();
+          } catch (err) {
+            console.error('[TMA] Ad chain threw:', err);
+            adSuccess = false;
+          }
+
+          if (!adSuccess) {
+            /* ── AD FAILED / CLOSED EARLY: Do NOT increment ───────
+               Reset button to original state, show error toast.
+               ──────────────────────────────────────────────────── */
+            const prog = getTMAProgress(postId);
+            taskBtn.disabled = false;
+            taskBtn.className = 'btn btn-task';
+            taskBtn.innerHTML = `▶ Watch Ad (${prog.count}/${total})`;
+            showToast('Ad was closed early. Please watch the full ad to earn a task point.', 'error');
+            return;
+          }
+
+          /* ── BOTH ADS COMPLETED: Increment counter ───────────── */
+          const prog = getTMAProgress(postId);
+          const newCount = Math.min(prog.count + 1, total);
+          const newProg  = { count: newCount, unlockedAt: null };
+
+          // Check if all tasks are now done → unlock
+          if (newCount >= total) {
+            newProg.unlockedAt = Date.now();
+          }
+
+          saveTMAProgress(postId, newProg);
+
+          // Re-render the card to reflect updated state
+          rerenderTMACard(postId);
+
+          if (newCount >= total) {
+            showToast(`🎉 All ${total} tasks complete! Link unlocked for ${CONFIG.UNLOCK_DURATION_SECONDS / 60} minutes.`, 'success', 5000);
+          } else {
+            showToast(`Task ${newCount}/${total} recorded!`, 'success', 3000);
+          }
+        });
+      }
+
+      // "Access Video" button (all tasks done, not yet unlocked with timestamp)
+      const openBtn = card.querySelector('[data-action="open-link"]');
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          const link = openBtn.dataset.link;
+          if (link) window.open(link, '_blank', 'noopener,noreferrer');
+        });
+      }
+    }
+
+    /**
+     * Main TMA module entry point.
+     * Fetches TMA posts and renders the grid.
+     */
+    async function mountTMAModule() {
+      try {
+        const res = await fetch(CONFIG.TMA_DATA_URL, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const posts = await res.json();
+
+        if (!Array.isArray(posts) || posts.length === 0) {
+          throw new Error('No posts found in tma-posts.json');
+        }
+
+        _tmaPostsCache = posts;
+        postsGridEl.innerHTML = '';
+
+        posts.forEach((post, idx) => {
+          const card = buildTMACard(post, idx);
+          postsGridEl.appendChild(card);
+          attachTMACardListeners(card, post);
+        });
+
+        showPosts();
+
+      } catch (err) {
+        console.error('[TMA] Mount error:', err);
+        showError(`Could not load Telegram content. ${err.message}`);
+      }
+    }
+
+    /* ================================================================
+       ██╗    ██╗███████╗██████╗     ███╗   ███╗ ██████╗ ██████╗ ██╗   ██╗██╗     ███████╗
+       ██║    ██║██╔════╝██╔══██╗    ████╗ ████║██╔═══██╗██╔══██╗██║   ██║██║     ██╔════╝
+       ██║ █╗ ██║█████╗  ██████╔╝    ██╔████╔██║██║   ██║██║  ██║██║   ██║██║     █████╗
+       ██║███╗██║██╔══╝  ██╔══██╗    ██║╚██╔╝██║██║   ██║██║  ██║██║   ██║██║     ██╔══╝
+       ╚███╔███╔╝███████╗██████╔╝    ██║ ╚═╝ ██║╚██████╔╝██████╔╝╚██████╔╝███████╗███████╗
+        ╚══╝╚══╝ ╚══════╝╚═════╝     ╚═╝     ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+       MODULE B: STANDARD WEB BROWSER LOGIC
+    ================================================================ */
+
+    /**
+     * Round-Robin Ad Link State.
+     * Tracks which ad link index to serve next, GLOBALLY across all posts.
+     * This persists within the session via a module-level variable.
+     */
+    let _adLinkIndex = 0;
+
+    /**
+     * Returns the next ad link in the round-robin cycle.
+     * Automatically wraps around after reaching the end of the array.
+     * @returns {string}
+     */
+    function getNextAdLink() {
+      if (!CONFIG.AD_LINKS.length) return '#';
+      const link = CONFIG.AD_LINKS[_adLinkIndex % CONFIG.AD_LINKS.length];
+      _adLinkIndex++;
+      return link;
+    }
+
+    /**
+     * Web post state. Stored per-post in a Map for the session.
+     * State: 'idle' | 'waiting' | 'done'
+     * This is intentionally session-only (no localStorage) so users
+     * must re-watch ads after page refresh — adjust if needed.
+     */
+    const _webPostState = new Map(); // postId → { state, adLinkUsed }
+
+    /**
+     * Builds and renders a single Web module post card.
+     * @param {Object} post - { id, title, image, targetLink }
+     * @param {number} animDelay
+     * @returns {HTMLElement}
+     */
+    function buildWebCard(post, animDelay) {
+      const state = _webPostState.get(post.id) || { state: 'idle' };
+
+      const card = document.createElement('div');
+      card.className = 'post-card';
+      card.style.animationDelay = `${animDelay * 80}ms`;
+      card.dataset.postId = post.id;
+
+      let btnHTML;
+      if (state.state === 'done') {
+        btnHTML = `<a href="${escapeHTML(post.targetLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-unlocked">🎬 Go to Target Video</a>`;
+      } else {
+        btnHTML = `<button class="btn btn-task" data-action="web-task" data-post-id="${post.id}">▶ Unlock Video</button>`;
+      }
+
+      card.innerHTML = `
+        <div class="card-thumb">
+          <img src="${post.image}" alt="${escapeHTML(post.title)}" />
+          <div class="thumb-overlay"></div>
+          <span class="thumb-badge web">Premium</span>
+          <div class="thumb-play">▶</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">${escapeHTML(post.title)}</h2>
+          ${btnHTML}
+        </div>
+      `;
+
+      const img = card.querySelector('img');
+      registerLazyImage(img);
+
+      return card;
+    }
+
+    /**
+     * Attaches click listeners to a Web module card.
+     * Handles: first click (ad redirect), 15-second timer, success/failure.
+     * @param {HTMLElement} card
+     * @param {Object} post
+     */
+    function attachWebCardListeners(card, post) {
+      const taskBtn = card.querySelector('[data-action="web-task"]');
+      if (!taskBtn) return; // already unlocked, nothing to attach
+
+      taskBtn.addEventListener('click', function onFirstClick() {
+        // Remove listener immediately — only one valid first-click
+        taskBtn.removeEventListener('click', onFirstClick);
+
+        /* ── STEP 1: Select next ad link (round-robin) ────────────── */
+        const adLink = getNextAdLink();
+
+        /* ── STEP 2: Open ad in NEW TAB ───────────────────────────── */
+        window.open(adLink, '_blank', 'noopener,noreferrer');
+
+        /* ── STEP 3: Record the click timestamp and start timer ───── */
+        const clickTime     = Date.now();
+        let timerToastEl    = null;
+        let timerIntervalId = null;
+        let userReturnedEarly = false;
+
+        // Update button to show timer state
+        taskBtn.disabled  = true;
+        taskBtn.className = 'btn btn-timer';
+        taskBtn.innerHTML = `⏳ Wait 15s on ad page...`;
+
+        // Show instructional toast
+        timerToastEl = showToast('📢 Please stay on the ad page for at least 15 seconds before returning here.', 'info', 0);
+
+        /* ── STEP 4: Page Visibility API — monitor tab switching ─── */
+        let timerCompleted = false;
+
+        function onVisibilityChange() {
+          if (document.visibilityState !== 'visible') return;
+          // User switched back to this tab — check elapsed time
+
+          const elapsed = Date.now() - clickTime;
+
+          if (elapsed < CONFIG.AD_VISIBILITY_THRESHOLD_MS) {
+            /* ── RETURNED TOO EARLY ─────────────────────────────────
+               Fail the task. Show severe error. Reset button.
+               ──────────────────────────────────────────────────── */
+            userReturnedEarly = true;
+            cleanup();
+
+            // Dismiss the timer toast
+            if (timerToastEl) { timerToastEl.remove(); timerToastEl = null; }
+
+            showToast('🚫 You did not wait 15 seconds on the target page. Please try again.', 'error', 6000);
+
+            // Reset button to idle state
+            taskBtn.disabled  = false;
+            taskBtn.className = 'btn btn-task';
+            taskBtn.innerHTML = '▶ Unlock Video';
+            // Re-attach listener for the next attempt
+            taskBtn.addEventListener('click', onFirstClick);
+
+          } else {
+            /* ── RETURNED AFTER 15s: SUCCESS ───────────────────────
+               Mark task as done. Permanently change button.
+               ──────────────────────────────────────────────────── */
+            timerCompleted = true;
+            cleanup();
+
+            if (timerToastEl) { timerToastEl.remove(); timerToastEl = null; }
+
+            showToast('✅ Access granted! Click the button to open your video.', 'success', 5000);
+
+            // Save state
+            _webPostState.set(post.id, { state: 'done' });
+
+            // Replace button permanently with "Go to Target Video"
+            const newBtn = document.createElement('a');
+            newBtn.href      = post.targetLink;
+            newBtn.target    = '_blank';
+            newBtn.rel       = 'noopener noreferrer';
+            newBtn.className = 'btn btn-unlocked';
+            newBtn.textContent = '🎬 Go to Target Video';
+            taskBtn.replaceWith(newBtn);
+          }
+        }
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        /* ── Live countdown on button label ─────────────────────── */
+        timerIntervalId = setInterval(() => {
+          if (timerCompleted || userReturnedEarly) return;
+          const elapsed  = Date.now() - clickTime;
+          const left     = Math.max(0, Math.ceil((CONFIG.AD_VISIBILITY_THRESHOLD_MS - elapsed) / 1000));
+
+          if (left <= 0) {
+            // Timer completed passively (user stayed on this tab somehow — 
+            // e.g., a short ad that auto-closed). Show success.
+            // This handles edge cases where visibilitychange didn't fire.
+            timerCompleted = true;
+            cleanup();
+            if (timerToastEl) { timerToastEl.remove(); timerToastEl = null; }
+            showToast('✅ Access granted! Click to open your video.', 'success', 5000);
+            _webPostState.set(post.id, { state: 'done' });
+            const newBtn = document.createElement('a');
+            newBtn.href      = post.targetLink;
+            newBtn.target    = '_blank';
+            newBtn.rel       = 'noopener noreferrer';
+            newBtn.className = 'btn btn-unlocked';
+            newBtn.textContent = '🎬 Go to Target Video';
+            taskBtn.replaceWith(newBtn);
+          } else {
+            taskBtn.innerHTML = `⏳ ${left}s remaining...`;
+          }
+        }, 500);
+
+        function cleanup() {
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+          clearInterval(timerIntervalId);
+        }
+      });
+    }
+
+    /**
+     * Main Web module entry point.
+     * Fetches web posts and renders the grid.
+     */
+    async function mountWebModule() {
+      try {
+        const res = await fetch(CONFIG.WEB_DATA_URL, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const posts = await res.json();
+
+        if (!Array.isArray(posts) || posts.length === 0) {
+          throw new Error('No posts found in web-posts.json');
+        }
+
+        postsGridEl.innerHTML = '';
+
+        posts.forEach((post, idx) => {
+          const card = buildWebCard(post, idx);
+          postsGridEl.appendChild(card);
+          attachWebCardListeners(card, post);
+        });
+
+        showPosts();
+
+      } catch (err) {
+        console.error('[WEB] Mount error:', err);
+        showError(`Could not load content. ${err.message}`);
+      }
+    }
+
+    /* ================================================================
+       UTILITY: HTML escape to prevent XSS from JSON data
+    ================================================================ */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* ================================================================
+       BOOT: Mount the correct module based on environment
+    ================================================================ */
+    if (isTMA) {
+      console.log('[CineVault] Mounting Telegram Mini App module.');
+      mountTMAModule();
+    } else {
+      console.log('[CineVault] Mounting Standard Web module.');
+      mountWebModule();
+    }
+
+  })(); // End IIFE
+  </script>
+
+</body>
+</html>
