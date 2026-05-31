@@ -7,8 +7,10 @@
   <meta name="description" content="Unlock exclusive viral video content through premium access." />
 
   <!-- Telegram WebApp SDK (loads only in TMA context, harmless in browser) -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="//libtl.com/sdk.js" data-zone="11014843" data-sdk="show_11014843"></script>
+    <script src="https://ad.gigapub.tech/script?id=6740"></script>
+  
   <style>
     /* ============================================================
        CSS CUSTOM PROPERTIES — GLOBAL DESIGN TOKENS
@@ -888,9 +890,9 @@
       // ADD YOUR ACTUAL AD REDIRECT LINKS HERE.
       // These cycle globally across all post button clicks.
       AD_LINKS: [
-        'https://adlink1.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 1 */
-        'https://adlink2.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 2 */
-        'https://adlink3.example.com/?ref=cinevault',  /* ← REPLACE with your Ad Link 3 */
+        'https://prototypesorting.com/p99vwjq2?key=57217116cccb25526dfb6a5a4edd9aea',  /* ← REPLACE with your Ad Link 1 */
+        'https://omg10.com/4/10282820',  /* ← REPLACE with your Ad Link 2 */
+        'https://link.gigapub.tech/l/995lnn3max',  /* ← REPLACE with your Ad Link 3 */
       ],
     };
 
@@ -1079,82 +1081,20 @@
      *
      * @returns {Promise<boolean>}
      */
-    function runAdChain() {
-      return new Promise((resolve) => {
+        async function runAdChain() {
+      try {
+        if (typeof window.show_11014843 !== 'function') return false;
+        await window.show_11014843();
 
-        /* ── STEP 1: Trigger MONETAG Ad ──────────────────────────────
-           INSERT YOUR MONETAG ZONE ID BELOW.
-           Replace `YOUR_MONETAG_ZONE_ID` with the actual zone ID.
-           Monetag SDK must be loaded (add their script to <head>).
-           ──────────────────────────────────────────────────────────── */
-        const MONETAG_ZONE_ID = 'YOUR_MONETAG_ZONE_ID'; /* ← REPLACE THIS */
+        if (typeof window.showGiga !== 'function') return false;
+        await window.showGiga();
 
-        let monetagCompleted = false;
-
-        // Monetag interstitial / rewarded ad call.
-        // Adjust the method name based on Monetag's actual SDK API.
-        try {
-          if (typeof window.__monetag === 'undefined' || typeof window.__monetag.show === 'undefined') {
-            console.warn('[TMA Ad] Monetag SDK not loaded. Simulating completion.');
-            // SIMULATION ONLY — Remove this block in production.
-            setTimeout(() => onMonetlagClose(), 1500);
-          } else {
-            /* ── PRODUCTION CODE ──────────────────────────────────
-               Call Monetag's show method with zone ID and callbacks.
-               Replace with exact Monetag API call from their docs.
-               ─────────────────────────────────────────────────── */
-            window.__monetag.show(MONETAG_ZONE_ID, {
-              onClose: onMonetlagClose,
-              onError: () => resolve(false), // ad error → fail the chain
-            });
-          }
-        } catch (err) {
-          console.error('[TMA Ad] Monetag error:', err);
-          resolve(false);
-          return;
-        }
-
-        /* Called the INSTANT Monetag ad closes */
-        function onMonetlagClose() {
-          if (monetagCompleted) return; // guard against double-fire
-          monetagCompleted = true;
-
-          /* ── STEP 2: IMMEDIATELY trigger GIGA BAPS Ad ───────────
-             INSERT YOUR GIGA BAPS ZONE/PUBLISHER ID BELOW.
-             Replace `YOUR_GIGA_BAPS_ID` with the actual ID.
-             GigaBaps SDK must be loaded (add their script to <head>).
-             ──────────────────────────────────────────────────────── */
-          const GIGA_BAPS_ID = 'YOUR_GIGA_BAPS_ID'; /* ← REPLACE THIS */
-
-          try {
-            if (typeof window.gigabaps === 'undefined' || typeof window.gigabaps.show === 'undefined') {
-              console.warn('[TMA Ad] GigaBaps SDK not loaded. Simulating completion.');
-              // SIMULATION ONLY — Remove this block in production.
-              setTimeout(() => onGigaBapsClose(), 1500);
-            } else {
-              /* ── PRODUCTION CODE ────────────────────────────────
-                 Replace with exact GigaBaps API call from their docs.
-                 ─────────────────────────────────────────────────── */
-              window.gigabaps.show(GIGA_BAPS_ID, {
-                onClose: onGigaBapsClose,
-                onError: () => resolve(false),
-              });
-            }
-          } catch (err) {
-            console.error('[TMA Ad] GigaBaps error:', err);
-            resolve(false);
-          }
-        }
-
-        /* Called the INSTANT GigaBaps ad closes — BOTH ads done */
-        function onGigaBapsClose() {
-          /* ── STEP 3: Both ads completed. Resolve true. ────────────
-             The task counter will now increment in the caller.
-             ──────────────────────────────────────────────────────── */
-          resolve(true);
-        }
-      });
+        return true;
+      } catch (err) {
+        return false;
+      }
     }
+
 
     /**
      * Builds and renders a single TMA post card.
