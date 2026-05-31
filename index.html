@@ -1081,26 +1081,45 @@
      * @returns {Promise<boolean>}
      */
          let _adTurn = 0;
+let _adChainLocked = false;
 let _monetagReady = false;
+let _monetagLoading = false;
 
-function _ensureMonetag() {
+function _preloadMonetag() {
+  if (_monetagReady || _monetagLoading) return;
+  if (typeof window.show_11014843 === 'function') { _monetagReady = true; return; }
+  _monetagLoading = true;
+  const s = document.createElement('script');
+  s.src = '//libtl.com/sdk.js';
+  s.setAttribute('data-zone', '11014843');
+  s.setAttribute('data-sdk', 'show_11014843');
+  s.onload = () => {
+    setTimeout(() => {
+      _monetagReady = typeof window.show_11014843 === 'function';
+      _monetagLoading = false;
+    }, 400);
+  };
+  s.onerror = () => { _monetagLoading = false; };
+  document.head.appendChild(s);
+}
+
+function _waitForMonetag() {
   return new Promise((resolve) => {
     if (_monetagReady && typeof window.show_11014843 === 'function') { resolve(true); return; }
-    if (typeof window.show_11014843 === 'function') { _monetagReady = true; resolve(true); return; }
-    const s = document.createElement('script');
-    s.src = '//libtl.com/sdk.js';
-    s.setAttribute('data-zone', '11014843');
-    s.setAttribute('data-sdk', 'show_11014843');
-    const t = setTimeout(() => resolve(false), 8000);
-    s.onload = () => {
-      clearTimeout(t);
-      setTimeout(() => {
-        _monetagReady = typeof window.show_11014843 === 'function';
-        resolve(_monetagReady);
-      }, 300);
-    };
-    s.onerror = () => { clearTimeout(t); resolve(false); };
-    document.head.appendChild(s);
+    const deadline = Date.now() + 9000;
+    const poll = setInterval(() => {
+      if (typeof window.show_11014843 === 'function') {
+        _monetagReady = true;
+        _monetagLoading = false;
+        clearInterval(poll);
+        resolve(true);
+        return;
+      }
+      if (Date.now() > deadline) {
+        clearInterval(poll);
+        resolve(false);
+      }
+    }, 250);
   });
 }
 
@@ -1112,7 +1131,7 @@ function _fireGiga() {
     try {
       const r = window.showGiga({ onClose: () => done(true), onError: () => done(false) });
       if (r && typeof r.then === 'function') { clearTimeout(t); r.then(() => resolve(true)).catch(() => resolve(false)); }
-    } catch { done(false); }
+    } catch (e) { done(false); }
   });
 }
 
@@ -1124,23 +1143,30 @@ function _fireMonetag() {
     try {
       const r = window.show_11014843({ onClose: () => done(true), onError: () => done(false) });
       if (r && typeof r.then === 'function') { clearTimeout(t); r.then(() => resolve(true)).catch(() => resolve(false)); }
-    } catch { done(false); }
+    } catch (e) { done(false); }
   });
 }
 
 async function runAdChain() {
-  const turn = _adTurn % 2;
-  if (turn === 0) {
-    const ok = await _fireGiga();
-    if (ok) _adTurn++;
-    return ok;
-  } else {
-    const ready = await _ensureMonetag();
-    if (!ready) return false;
-    const ok = await _fireMonetag();
-    if (ok) _adTurn++;
-    return ok;
+  if (_adChainLocked) return false;
+  _adChainLocked = true;
+  let ok = false;
+  try {
+    const turn = _adTurn % 2;
+    if (turn === 0) {
+      ok = await _fireGiga();
+      if (ok) _adTurn++;
+    } else {
+      const ready = await _waitForMonetag();
+      if (!ready) { _adChainLocked = false; return false; }
+      ok = await _fireMonetag();
+      if (ok) _adTurn++;
+    }
+  } catch (e) {
+    ok = false;
   }
+  _adChainLocked = false;
+  return ok;
 }
 
     /**
@@ -1640,6 +1666,7 @@ async function runAdChain() {
     ================================================================ */
     if (isTMA) {
       console.log('[CineVault] Mounting Telegram Mini App module.');
+      _preloadMonetag();
       mountTMAModule();
     } else {
       console.log('[CineVault] Mounting Standard Web module.');
