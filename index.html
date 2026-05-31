@@ -8,7 +8,6 @@
 
   <!-- Telegram WebApp SDK (loads only in TMA context, harmless in browser) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="//libtl.com/sdk.js" data-zone="11014843" data-sdk="show_11014843"></script>
     <script src="https://ad.gigapub.tech/script?id=6740"></script>
   
   <style>
@@ -1081,18 +1080,46 @@
      *
      * @returns {Promise<boolean>}
      */
-            async function runAdChain() {
-      try {
-        if (typeof window.showGiga !== 'function') return false;
-        await window.showGiga();
-        await new Promise(r => setTimeout(r, 100));
-        if (typeof window.show_11014843 !== 'function') return false;
-        await window.show_11014843();
-        return true;
-      } catch (e) {
-        return false;
+            function runAdChain() {
+  return new Promise((resolve) => {
+    if (typeof window.showGiga !== 'function') { resolve(false); return; }
+
+    function launchMonetag() {
+      if (typeof window.show_11014843 === 'function') {
+        fireMonetag(resolve);
+        return;
       }
+      const s = document.createElement('script');
+      s.src = '//libtl.com/sdk.js';
+      s.setAttribute('data-zone', '11014843');
+      s.setAttribute('data-sdk', 'show_11014843');
+      const t = setTimeout(() => resolve(false), 8000);
+      s.onload = () => { clearTimeout(t); fireMonetag(resolve); };
+      s.onerror = () => { clearTimeout(t); resolve(false); };
+      document.head.appendChild(s);
     }
+
+    function fireMonetag(resolve) {
+      if (typeof window.show_11014843 !== 'function') { resolve(false); return; }
+      const t = setTimeout(() => resolve(false), 8000);
+      try {
+        const r = window.show_11014843({
+          onClose: () => { clearTimeout(t); resolve(true); },
+          onError: () => { clearTimeout(t); resolve(false); },
+        });
+        if (r && typeof r.then === 'function') { clearTimeout(t); r.then(() => resolve(true)).catch(() => resolve(false)); }
+      } catch { clearTimeout(t); resolve(false); }
+    }
+
+    try {
+      const r = window.showGiga({
+        onClose: () => launchMonetag(),
+        onError: () => resolve(false),
+      });
+      if (r && typeof r.then === 'function') { r.then(() => launchMonetag()).catch(() => resolve(false)); }
+    } catch { resolve(false); }
+  });
+}
 
     /**
      * Builds and renders a single TMA post card.
