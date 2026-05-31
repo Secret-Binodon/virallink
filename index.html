@@ -1080,31 +1080,68 @@
      *
      * @returns {Promise<boolean>}
      */
-                let _nextNetwork = 'giga';
+         let _adTurn = 0;
+let _monetagReady = false;
 
-    async function runAdChain() {
-      return new Promise((resolve) => {
-        if (_nextNetwork === 'giga') {
-          if (typeof window.showGiga !== 'function') { _nextNetwork = 'monetag'; resolve(false); return; }
-          window.showGiga({
-            onClose: () => { _nextNetwork = 'monetag'; resolve(true); },
-            onError: () => { _nextNetwork = 'monetag'; resolve(false); }
-          });
-        } else {
-          if (typeof window.show_11014843 !== 'function') { _nextNetwork = 'giga'; resolve(false); return; }
-          const r = window.show_11014843({
-            onClose: () => { _nextNetwork = 'giga'; resolve(true); },
-            onError: () => { _nextNetwork = 'giga'; resolve(false); }
-          });
-          if (r && typeof r.then === 'function') {
-            r.then(() => { _nextNetwork = 'giga'; resolve(true); }).catch(() => { _nextNetwork = 'giga'; resolve(false); });
-          } else {
-            _nextNetwork = 'giga';
-            resolve(true);
-          }
-        }
-      });
-    }
+function _ensureMonetag() {
+  return new Promise((resolve) => {
+    if (_monetagReady && typeof window.show_11014843 === 'function') { resolve(true); return; }
+    if (typeof window.show_11014843 === 'function') { _monetagReady = true; resolve(true); return; }
+    const s = document.createElement('script');
+    s.src = '//libtl.com/sdk.js';
+    s.setAttribute('data-zone', '11014843');
+    s.setAttribute('data-sdk', 'show_11014843');
+    const t = setTimeout(() => resolve(false), 8000);
+    s.onload = () => {
+      clearTimeout(t);
+      setTimeout(() => {
+        _monetagReady = typeof window.show_11014843 === 'function';
+        resolve(_monetagReady);
+      }, 300);
+    };
+    s.onerror = () => { clearTimeout(t); resolve(false); };
+    document.head.appendChild(s);
+  });
+}
+
+function _fireGiga() {
+  return new Promise((resolve) => {
+    if (typeof window.showGiga !== 'function') { resolve(false); return; }
+    const t = setTimeout(() => resolve(false), 60000);
+    const done = (v) => { clearTimeout(t); resolve(v); };
+    try {
+      const r = window.showGiga({ onClose: () => done(true), onError: () => done(false) });
+      if (r && typeof r.then === 'function') { clearTimeout(t); r.then(() => resolve(true)).catch(() => resolve(false)); }
+    } catch { done(false); }
+  });
+}
+
+function _fireMonetag() {
+  return new Promise((resolve) => {
+    if (typeof window.show_11014843 !== 'function') { resolve(false); return; }
+    const t = setTimeout(() => resolve(false), 60000);
+    const done = (v) => { clearTimeout(t); resolve(v); };
+    try {
+      const r = window.show_11014843({ onClose: () => done(true), onError: () => done(false) });
+      if (r && typeof r.then === 'function') { clearTimeout(t); r.then(() => resolve(true)).catch(() => resolve(false)); }
+    } catch { done(false); }
+  });
+}
+
+async function runAdChain() {
+  const turn = _adTurn % 2;
+  if (turn === 0) {
+    const ok = await _fireGiga();
+    if (ok) _adTurn++;
+    return ok;
+  } else {
+    const ready = await _ensureMonetag();
+    if (!ready) return false;
+    const ok = await _fireMonetag();
+    if (ok) _adTurn++;
+    return ok;
+  }
+}
 
     /**
      * Builds and renders a single TMA post card.
