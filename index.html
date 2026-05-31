@@ -1081,20 +1081,18 @@
      *
      * @returns {Promise<boolean>}
      */
-        async function runAdChain() {
+            async function runAdChain() {
       try {
-        if (typeof window.show_11014843 !== 'function') return false;
-        await window.show_11014843();
-
         if (typeof window.showGiga !== 'function') return false;
         await window.showGiga();
-
+        await new Promise(r => setTimeout(r, 100));
+        if (typeof window.show_11014843 !== 'function') return false;
+        await window.show_11014843();
         return true;
-      } catch (err) {
+      } catch (e) {
         return false;
       }
     }
-
 
     /**
      * Builds and renders a single TMA post card.
