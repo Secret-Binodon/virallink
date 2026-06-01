@@ -110,6 +110,10 @@
     .hidden { display: none !important; }
     @keyframes card-reveal { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .post-card { animation: card-reveal 0.4s ease both; }
+    .web-only { display: none; }
+    .tma-only { display: none; }
+    .web-mode .web-only { display: block; }
+    .tma-mode .tma-only { display: block; }
   </style>
 </head>
 <body>
