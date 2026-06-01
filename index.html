@@ -788,14 +788,15 @@
       <div class="hero-eyebrow">Premium Content Platform</div>
       <h1 class="hero-title">Unlock <em>Exclusive</em><br>Video Content</h1>
       <p class="hero-subtitle">Complete short tasks to gain time-limited access to our curated collection of premium viral videos.</p>
+      
       <div class="hero-stats">
         <div class="hero-stat">
-          <span class="hero-stat-num">500+</span>
+          <span class="hero-stat-num">100+</span>
           <span class="hero-stat-label">Videos</span>
         </div>
         <div class="hero-divider"></div>
         <div class="hero-stat">
-          <span class="hero-stat-num">5 Min</span>
+          <span class="hero-stat-num">20-S</span>
           <span class="hero-stat-label">Access Window</span>
         </div>
         <div class="hero-divider"></div>
@@ -803,6 +804,10 @@
           <span class="hero-stat-num">100%</span>
           <span class="hero-stat-label">Free</span>
         </div>
+      </div>
+      <div style="margin-top:24px;width:100%;text-align:center;">
+        <script async="async" data-cfasync="false" src="https://prototypesorting.com/247476cdf6d68a31797ec615e7b10572/invoke.js"></script>
+        <div id="container-247476cdf6d68a31797ec615e7b10572"></div>
       </div>
     </section>
 
@@ -1428,22 +1433,23 @@ async function runAdChain() {
        MODULE B: STANDARD WEB BROWSER LOGIC
     ================================================================ */
 
-    /**
-     * Round-Robin Ad Link State.
-     * Tracks which ad link index to serve next, GLOBALLY across all posts.
-     * This persists within the session via a module-level variable.
-     */
-    let _adLinkIndex = 0;
+let _adLinkIndex = (function() {
+      try {
+        const saved = parseInt(localStorage.getItem('cv_ali'), 10);
+        return (!isNaN(saved) && saved >= 0 && saved < CONFIG.AD_LINKS.length) ? saved : 0;
+      } catch { return 0; }
+    })();
 
-    /**
-     * Returns the next ad link in the round-robin cycle.
-     * Automatically wraps around after reaching the end of the array.
-     * @returns {string}
-     */
     function getNextAdLink() {
       if (!CONFIG.AD_LINKS.length) return '#';
-      const link = CONFIG.AD_LINKS[_adLinkIndex % CONFIG.AD_LINKS.length];
+      const link = CONFIG.AD_LINKS[_adLinkIndex];
       _adLinkIndex++;
+      if (_adLinkIndex >= CONFIG.AD_LINKS.length) {
+        _adLinkIndex = 0;
+        try { localStorage.removeItem('cv_ali'); } catch {}
+      } else {
+        try { localStorage.setItem('cv_ali', String(_adLinkIndex)); } catch {}
+      }
       return link;
     }
 
@@ -1512,8 +1518,8 @@ async function runAdChain() {
         /* ── STEP 1: Select next ad link (round-robin) ────────────── */
         const adLink = getNextAdLink();
 
-        /* ── STEP 2: Open ad in NEW TAB ───────────────────────────── */
-        window.open(adLink, '_blank', 'noopener,noreferrer');
+        /* ── STEP 2: Open ad in SAME TAB ──────────────────────────── */
+        window.location.href = adLink;
 
         /* ── STEP 3: Record the click timestamp and start timer ───── */
         const clickTime     = Date.now();
