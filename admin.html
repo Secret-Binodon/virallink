@@ -5,10 +5,11 @@
     <title>Secret Binodon | Admin Portal</title>
     <style>
         :root { --gold: #d4a843; --bg: #050508; --card: #0d0d14; --text: #f0ede6; }
-        body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; display: flex; justify-content: center; padding: 50px 20px; }
-        .panel { background: var(--card); padding: 40px; border-radius: 20px; border: 1px solid rgba(212,168,67,0.2); width: 100%; max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+         body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; display: flex; justify-content: center; padding: 10px; min-height: 100vh; }
+        .panel { background: var(--card); padding: 20px; border-radius: 20px; border: 1px solid rgba(212,168,67,0.2); width: 100%; max-width: 600px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
         h2 { color: var(--gold); text-align: center; margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .field { margin-bottom: 15px; }
         label { font-size: 11px; color: #9b96a8; text-transform: uppercase; margin-bottom: 6px; display: block; }
         input { width: 100%; padding: 12px; background: #161620; border: 1px solid #2a2a3a; border-radius: 10px; color: #fff; box-sizing: border-box; transition: 0.3s; }
